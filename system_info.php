@@ -5,6 +5,10 @@ function system_info()
 {
     global $ui;
     _admin();
+    $shellExecEnabled = function_exists('shell_exec');
+    if(!$shellExecEnabled) {
+        r2(U . 'dashboard', 'e','Shell exec is disabled on this server. Please enable it to use this feature.');
+    }
     $ui->assign('_title', 'System Information');
     $ui->assign('_system_menu', 'settings');
     $admin = Admin::_info();
@@ -16,7 +20,7 @@ function system_info()
 
     $os = strtoupper(PHP_OS);
 
-    if (strpos($os, 'WIN') === 0) {
+    if (str_starts_with($os, 'WIN')) {
         // Windows OS
         exec('net stop freeradius', $output, $retcode);
         exec('net start freeradius', $output, $retcode);
