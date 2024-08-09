@@ -1,4 +1,12 @@
 {include file="sections/header.tpl"}
+{if isset($message)}
+<div class="alert alert-{if $notify_t == 's'}success{else}danger{/if}">
+    <button type="button" class="close" data-dismiss="alert">
+        <span aria-hidden="true">×</span>
+    </button>
+    <div>{$message}</div>
+</div>
+{/if}
 
 <h3 align=""><u>Server Status and Information</u>:</h3>
     <style>
