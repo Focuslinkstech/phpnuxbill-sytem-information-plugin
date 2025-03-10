@@ -43,11 +43,11 @@ function system_info()
             ];
         }
 
-        $os = strtoupper(substr(PHP_OS, 0, 3));
+        $os = strtoupper(substr(PHP_OS, 0, 3)); // Get the OS type (WIN, LIN, or DAR for macOS)
 
         if ($os === 'WIN') {
             // Windows system
-            $output = array();
+            $output = [];
             exec('wmic OS get TotalVisibleMemorySize, FreePhysicalMemory /Value', $output);
 
             $total_memory = null;
@@ -66,10 +66,10 @@ function system_info()
             }
 
             if ($total_memory !== null && $free_memory !== null) {
-                $total_memory = round($total_memory / 1024);
-                $free_memory = round($free_memory / 1024);
+                $total_memory = round($total_memory / 1024); // Convert KB to MB
+                $free_memory = round($free_memory / 1024); // Convert KB to MB
                 $used_memory = $total_memory - $free_memory;
-                $memory_usage_percentage = round($used_memory / $total_memory * 100);
+                $memory_usage_percentage = $total_memory > 0 ? round($used_memory / $total_memory * 100) : 0;
 
                 return [
                     'total' => $total_memory,
@@ -81,20 +81,41 @@ function system_info()
         } elseif ($os === 'DAR') {
             // macOS system
             $output = shell_exec('vm_stat');
-            $output = trim($output);
-            $lines = explode("\n", $output);
+            if ($output === null) {
+                return [
+                    'total' => null,
+                    'free' => null,
+                    'used' => null,
+                    'used_percentage' => null,
+                ];
+            }
 
-            $page_size = intval(preg_replace('/\D/', '', $lines[0]));
-            $pages_free = intval(preg_replace('/\D/', '', $lines[1]));
-            $pages_active = intval(preg_replace('/\D/', '', $lines[2]));
-            $pages_inactive = intval(preg_replace('/\D/', '', $lines[3]));
-            $pages_speculative = intval(preg_replace('/\D/', '', $lines[4]));
-            $pages_wired = intval(preg_replace('/\D/', '', $lines[5]));
+            $lines = explode("\n", trim($output));
+            $page_size = 4096; // Default page size in bytes
 
-            $free_memory = ($pages_free + $pages_speculative) * $page_size / 1024 / 1024;
-            $used_memory = ($pages_active + $pages_inactive + $pages_wired) * $page_size / 1024 / 1024;
+            // Extract memory statistics
+            $pages_free = 0;
+            $pages_active = 0;
+            $pages_inactive = 0;
+            $pages_wired = 0;
+
+            foreach ($lines as $line) {
+                if (preg_match('/Pages free:\s+(\d+)\./', $line, $matches)) {
+                    $pages_free = intval($matches[1]);
+                } elseif (preg_match('/Pages active:\s+(\d+)\./', $line, $matches)) {
+                    $pages_active = intval($matches[1]);
+                } elseif (preg_match('/Pages inactive:\s+(\d+)\./', $line, $matches)) {
+                    $pages_inactive = intval($matches[1]);
+                } elseif (preg_match('/Pages wired down:\s+(\d+)\./', $line, $matches)) {
+                    $pages_wired = intval($matches[1]);
+                }
+            }
+
+            // Calculate memory usage
+            $free_memory = $pages_free * $page_size / 1024 / 1024; // Convert to MB
+            $used_memory = ($pages_active + $pages_inactive + $pages_wired) * $page_size / 1024 / 1024; // Convert to MB
             $total_memory = $free_memory + $used_memory;
-            $memory_usage_percentage = round($used_memory / $total_memory * 100);
+            $memory_usage_percentage = $total_memory > 0 ? round($used_memory / $total_memory * 100) : 0;
 
             return [
                 'total' => round($total_memory),
@@ -105,33 +126,47 @@ function system_info()
         } else {
             // Linux system
             $free = shell_exec('free -m');
-            $free = (string) trim($free);
+            if ($free === null) {
+                return [
+                    'total' => null,
+                    'free' => null,
+                    'used' => null,
+                    'used_percentage' => null,
+                ];
+            }
+
+            $free = trim($free);
             $free_arr = explode("\n", $free);
             $mem = explode(" ", $free_arr[1]);
             $mem = array_filter($mem);
             $mem = array_merge($mem);
 
-            $total_memory = $mem[1];
-            $used_memory = $mem[2];
-            $free_memory = $total_memory - $used_memory;
-            $memory_usage_percentage = round($used_memory / $total_memory * 100);
+            if (count($mem) >= 6) {
+                $total_memory = intval($mem[1]);
+                $used_memory = intval($mem[2]);
+                $free_memory = intval($mem[3]);
+                $memory_usage_percentage = $total_memory > 0 ? round($used_memory / $total_memory * 100) : 0;
 
-            return [
-                'total' => $total_memory,
-                'free' => $free_memory,
-                'used' => $used_memory,
-                'used_percentage' => $memory_usage_percentage,
-            ];
+                return [
+                    'total' => $total_memory,
+                    'free' => $free_memory,
+                    'used' => $used_memory,
+                    'used_percentage' => $memory_usage_percentage,
+                ];
+            }
         }
 
-        return null;
+        return [
+            'total' => null,
+            'free' => null,
+            'used' => null,
+            'used_percentage' => null,
+        ];
     }
-
-
     function system_info_getSystemInfo()
     {
         global $ui;
-        // Get the Idiorm ORM instance
+       
         $db = ORM::getDb();
         $serverInfo = $db->getAttribute(PDO::ATTR_SERVER_VERSION);
         $databaseName = $db->query('SELECT DATABASE()')->fetchColumn();
@@ -166,7 +201,6 @@ function system_info()
 
         return $systemInfo;
     }
-    //Lets get the storage usege
     function system_info_get_disk_usage()
     {
         // Check if shell_exec or exec is enabled
@@ -179,7 +213,9 @@ function system_info()
             ];
         }
 
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        $os = strtoupper(substr(PHP_OS, 0, 3));
+
+        if ($os === 'WIN') {
             // Windows system
             $output = [];
             exec('wmic logicaldisk where "DeviceID=\'C:\'" get Size,FreeSpace /format:list', $output);
@@ -196,19 +232,21 @@ function system_info()
                     }
                 }
 
-                $used_disk = $total_disk - $free_disk;
-                $disk_usage_percentage = round(($used_disk / $total_disk) * 100, 2);
+                if ($total_disk > 0) {
+                    $used_disk = $total_disk - $free_disk;
+                    $disk_usage_percentage = round(($used_disk / $total_disk) * 100, 2);
 
-                return [
-                    'total' => system_info_format_bytes($total_disk),
-                    'used' => system_info_format_bytes($used_disk),
-                    'free' => system_info_format_bytes($free_disk),
-                    'used_percentage' => $disk_usage_percentage . '%',
-                ];
+                    return [
+                        'total' => system_info_format_bytes($total_disk),
+                        'used' => system_info_format_bytes($used_disk),
+                        'free' => system_info_format_bytes($free_disk),
+                        'used_percentage' => $disk_usage_percentage . '%',
+                    ];
+                }
             }
         } else {
-            // Linux system
-            $disk = shell_exec('df / --output=size,used,avail,pcent --block-size=1');
+            // Linux and macOS systems
+            $disk = shell_exec('df -k /');
             if ($disk === null) {
                 return [
                     'total' => null,
@@ -224,34 +262,44 @@ function system_info()
             $disk = array_filter($disk);
             $disk = array_merge($disk);
 
-            $total_disk = $disk[0];
-            $used_disk = $disk[1];
-            $free_disk = $disk[2];
-            $disk_usage_percentage = $disk[3];
+            if (count($disk) >= 5) {
+                $total_disk = intval($disk[1]) * 1024;
+                $used_disk = intval($disk[2]) * 1024;
+                $free_disk = intval($disk[3]) * 1024;
+                $disk_usage_percentage = rtrim($disk[4], '%');
 
-            return [
-                'total' => system_info_format_bytes($total_disk),
-                'used' => system_info_format_bytes($used_disk),
-                'free' => system_info_format_bytes($free_disk),
-                'used_percentage' => $disk_usage_percentage,
-            ];
+                return [
+                    'total' => system_info_format_bytes($total_disk),
+                    'used' => system_info_format_bytes($used_disk),
+                    'free' => system_info_format_bytes($free_disk),
+                    'used_percentage' => $disk_usage_percentage . '%',
+                ];
+            }
         }
 
-        return null;
+        return [
+            'total' => null,
+            'used' => null,
+            'free' => null,
+            'used_percentage' => null,
+        ];
     }
 
-
-    function system_info_format_bytes($bytes, $precision = 2)
+    function system_info_format_bytes($bytes)
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        if ($bytes === null) {
+            return 'N/A';
+        }
 
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
+        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        $index = 0;
 
-        $bytes /= pow(1024, $pow);
+        while ($bytes >= 1024 && $index < count($units) - 1) {
+            $bytes /= 1024;
+            $index++;
+        }
 
-        return round($bytes, $precision) . ' ' . $units[$pow];
+        return round($bytes, 2) . ' ' . $units[$index];
     }
 
     function system_info_getSystemDistro()
@@ -304,6 +352,7 @@ function system_info()
 
         return $version;
     }
+
     function system_info_generateServiceTable()
     {
         function system_info_check_service($service_name)
@@ -332,33 +381,90 @@ function system_info()
         }
 
 
-        $services_to_check = array("FreeRADIUS", "MySQL", "MariaDB", "Cron", "SSHd");
+        $services_to_check = ["FreeRADIUS", "MySQL", "MariaDB", "Cron", "SSHd"];
 
-        $table = array(
+        $table = [
             'title' => 'Service Status',
-            'rows' => array()
-        );
+            'rows' => []
+        ];
 
         foreach ($services_to_check as $service_name) {
             $running = system_info_check_service(strtolower($service_name));
-            $class = ($running) ? "label pull-right bg-green" : "label pull-right bg-red";
-            $label = ($running) ? "running" : "not running";
+            $class = $running ? "label pull-right bg-green" : "label pull-right bg-red";
+            $label = $running ? "running" : "not running";
 
             $value = sprintf('<small class="%s">%s</small>', $class, $label);
 
-            $table['rows'][] = array($service_name, $value);
+            $table['rows'][] = [$service_name, $value];
         }
 
         return $table;
     }
 
     $systemInfo = system_info_getSystemInfo();
-
     $ui->assign('systemInfo', $systemInfo);
+    $ui->assign('cpu_info', system_info_getCpuInfo());
+    $ui->assign('xheader', '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">');
     $ui->assign('disk_usage', system_info_get_disk_usage());
     $ui->assign('memory_usage', system_info_get_server_memory_usage());
     $ui->assign('serviceTable', system_info_generateServiceTable());
 
     // Display the template
     $ui->display('system_info.tpl');
+}
+
+function system_info_getCpuInfo()
+{
+    $cpuInfo = [];
+    $os = strtoupper(substr(PHP_OS, 0, 3));
+
+    // Get CPU model and cores
+    if ($os === 'LIN') {
+        // Linux: Use lscpu or /proc/cpuinfo
+        if ($cpu = shell_exec('lscpu')) {
+            preg_match('/Model name:\s*(.+)/', $cpu, $matches);
+            $cpuInfo['model'] = $matches[1] ?? 'N/A';
+
+            preg_match('/CPU\(s\):\s*(\d+)/', $cpu, $matches);
+            $cpuInfo['cores'] = isset($matches[1]) && $matches[1] > 0 ? $matches[1] : 1;
+        } elseif (file_exists('/proc/cpuinfo')) {
+            $cpuinfo = file_get_contents('/proc/cpuinfo');
+            preg_match_all('/model name\s*:\s*(.+)/', $cpuinfo, $matches);
+            $cpuInfo['model'] = $matches[1][0] ?? 'N/A';
+            preg_match_all('/processor\s*:\s*\d+/', $cpuinfo, $matches);
+            $cpuInfo['cores'] = count($matches[0]) > 0 ? count($matches[0]) : 1;
+        }
+    } elseif ($os === 'WIN') {
+        // Windows: Use wmic command
+        if ($cpu = shell_exec('wmic cpu get name,NumberOfCores')) {
+            $cpu = explode("\n", trim($cpu));
+            if (isset($cpu[1])) {
+                $cpuData = preg_split('/\s+/', trim($cpu[1]));
+                $cpuInfo['model'] = implode(' ', array_slice($cpuData, 0, -1)); // CPU model
+                $cpuInfo['cores'] = end($cpuData); // Number of cores
+            }
+        }
+    } elseif ($os === 'DAR') {
+        if ($cpu = shell_exec('sysctl -n machdep.cpu.brand_string')) {
+            $cpuInfo['model'] = trim($cpu);
+        }
+        if ($cores = shell_exec('sysctl -n hw.ncpu')) {
+            $cpuInfo['cores'] = intval(trim($cores));
+        }
+    }
+
+    // Default fallback if no data is found
+    $cpuInfo['model'] = $cpuInfo['model'] ?? 'N/A';
+    $cpuInfo['cores'] = $cpuInfo['cores'] ?? 1;
+
+    // Get CPU usage (cross-platform)
+    $load = sys_getloadavg();
+    $cpuInfo['load_1min'] = $load[0];
+    $cpuInfo['load_5min'] = $load[1];
+    $cpuInfo['load_15min'] = $load[2];
+
+    // Calculate CPU usage percentage (approximation)
+    $cpuInfo['usage_percentage'] = round(($load[0] / $cpuInfo['cores']) * 100, 2);
+
+    return $cpuInfo;
 }
