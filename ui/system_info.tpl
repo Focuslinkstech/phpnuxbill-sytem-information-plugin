@@ -534,10 +534,18 @@
             e.preventDefault();
         }
     });
-
-    window.addEventListener('DOMContentLoaded', function () {
-        var portalLink = "https://github.com/focuslinkstech";
-        $('#version').html('System Info Plugin by: <a href="' + portalLink + '">Focuslinks Tech</a>');
+</script>
+<script>
+    window.addEventListener('DOMContentLoaded', function() {
+        const portalLink = "https://t.me/focuslinkstech";
+        const updateLink = "{$updateLink}";
+        const productName = '{$productName}';
+        const version = '{$version}';
+        if (updateLink !== "") {
+            $('#version').html(productName + ' | Ver: ' + version + ' | <a href="' + updateLink + '">Update Available</a> | by: <a href="' + portalLink + '">Focuslinks Tech</a>');
+        } else {
+            $('#version').html(productName + ' | Ver: ' + version + ' | by: <a href="' + portalLink + '">Focuslinks Tech</a>');
+        }
     });
 </script>
 

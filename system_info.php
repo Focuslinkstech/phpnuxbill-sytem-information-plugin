@@ -1,9 +1,26 @@
 <?php
 register_menu("System Info", true, "system_info", 'SETTINGS', '');
 
+/**
+ * Bismillahir Rahmanir Raheem
+ * 
+ * PHP Mikrotik Billing (https://github.com/paybilling/phpnuxbill/)
+ *
+ * Server Information Plugin For PHPNuxBill 
+ *
+ * @author: Focuslinks Digital Solutions <focuslinkstech@gmail.com>
+ * Website: https://focuslinkstech.com.ng/
+ * GitHub: https://github.com/Focuslinkstech/
+ * Telegram: https://t.me/focuslinkstech/
+ *
+ **/
+
+ $system_info_version = '2.1';
+ $productName = 'Server Information Plugin';
+
 function system_info()
 {
-    global $ui, $_app_stage;
+    global $ui, $_app_stage, $system_info_version, $productName;
     _admin();
     $ui->assign('_title', 'System Information');
     $ui->assign('_system_menu', 'settings');
@@ -22,6 +39,9 @@ function system_info()
             $retcode = 1;
         } elseif (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
             $output['error'] = Lang::T('You do not have permission to access this page');
+            $retcode = 1;
+        } elseif (!function_exists('shell_exec') || !function_exists('exec')) {
+            $output['error'] = Lang::T('SHELL_EXEC function is not enabled on your server');
             $retcode = 1;
         } else {
             $os = strtoupper(PHP_OS);
@@ -100,7 +120,7 @@ function system_info()
             }
 
             $lines = explode("\n", trim($output));
-            $page_size = 4096; // Default page size in bytes
+            $page_size = 4096;
 
             // Extract memory statistics
             $pages_free = 0;
@@ -121,8 +141,8 @@ function system_info()
             }
 
             // Calculate memory usage
-            $free_memory = $pages_free * $page_size / 1024 / 1024; // Convert to MB
-            $used_memory = ($pages_active + $pages_inactive + $pages_wired) * $page_size / 1024 / 1024; // Convert to MB
+            $free_memory = $pages_free * $page_size / 1024 / 1024;
+            $used_memory = ($pages_active + $pages_inactive + $pages_wired) * $page_size / 1024 / 1024; 
             $total_memory = $free_memory + $used_memory;
             $memory_usage_percentage = $total_memory > 0 ? round($used_memory / $total_memory * 100) : 0;
 
@@ -315,7 +335,6 @@ function system_info()
     {
         $distro = '';
 
-        // Lets retrieve the system distribution based on the operating system
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'LIN') {
             $distro = shell_exec('lsb_release -d');
             if ($distro) {
@@ -417,8 +436,8 @@ function system_info()
     $ui->assign('disk_usage', system_info_get_disk_usage());
     $ui->assign('memory_usage', system_info_get_server_memory_usage());
     $ui->assign('serviceTable', system_info_generateServiceTable());
-
-    // Display the template
+    $ui->assign('version', $system_info_version);
+    $ui->assign('productName', $productName);
     $ui->display('system_info.tpl');
 }
 
@@ -427,7 +446,6 @@ function system_info_getCpuInfo()
     $cpuInfo = [];
     $os = strtoupper(substr(PHP_OS, 0, 3));
 
-    // Get CPU model and cores
     if ($os === 'LIN') {
         // Linux: Use lscpu or /proc/cpuinfo
         if ($cpu = shell_exec('lscpu')) {
@@ -449,8 +467,8 @@ function system_info_getCpuInfo()
             $cpu = explode("\n", trim($cpu));
             if (isset($cpu[1])) {
                 $cpuData = preg_split('/\s+/', trim($cpu[1]));
-                $cpuInfo['model'] = implode(' ', array_slice($cpuData, 0, -1)); // CPU model
-                $cpuInfo['cores'] = end($cpuData); // Number of cores
+                $cpuInfo['model'] = implode(' ', array_slice($cpuData, 0, -1));
+                $cpuInfo['cores'] = end($cpuData);
             }
         }
     } elseif ($os === 'DAR') {
@@ -462,7 +480,6 @@ function system_info_getCpuInfo()
         }
     }
 
-    // Default fallback if no data is found
     $cpuInfo['model'] = $cpuInfo['model'] ?? 'N/A';
     $cpuInfo['cores'] = $cpuInfo['cores'] ?? 1;
 
@@ -471,8 +488,6 @@ function system_info_getCpuInfo()
     $cpuInfo['load_1min'] = $load[0];
     $cpuInfo['load_5min'] = $load[1];
     $cpuInfo['load_15min'] = $load[2];
-
-    // Calculate CPU usage percentage (approximation)
     $cpuInfo['usage_percentage'] = round(($load[0] / $cpuInfo['cores']) * 100, 2);
 
     return $cpuInfo;
