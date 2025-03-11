@@ -264,12 +264,12 @@
     }
 </style>
 {if isset($message)}
-    <div class="alert alert-{if $notify_t == 's'}success{else}danger{/if} alert-dismissible fade show" role="alert">
-        <div>{$message}</div>
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
+<div class="alert alert-{if $notify_t == 's'}success{else}danger{/if} alert-dismissible fade show" role="alert">
+    <div>{$message}</div>
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
 {/if}
 
 <div class="container-fluid">
@@ -286,7 +286,8 @@
                             <svg viewBox="0 0 100 100">
                                 <circle class="bg" cx="50" cy="50" r="45"></circle>
                                 <circle class="progress" cx="50" cy="50" r="45"
-                                        style="stroke-dashoffset: calc(283 - (283 * {$cpu_info.usage_percentage}) / 100);"></circle>
+                                    style="stroke-dashoffset: calc(283 - (283 * {$cpu_info.usage_percentage}) / 100);">
+                                </circle>
                             </svg>
                             <div class="progress-text">{$cpu_info.usage_percentage}%</div>
                         </div>
@@ -310,8 +311,8 @@
                         </div>
                         <div class="progress">
                             <div class="progress-bar bg-gradient-success" role="progressbar"
-                                 style="width: {$memory_usage.used_percentage}%"
-                                 aria-valuenow="{$memory_usage.used_percentage}" aria-valuemin="0" aria-valuemax="100">
+                                style="width: {$memory_usage.used_percentage}%"
+                                aria-valuenow="{$memory_usage.used_percentage}" aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
                     </div>
@@ -330,8 +331,8 @@
                         </div>
                         <div class="progress">
                             <div class="progress-bar bg-gradient-danger" role="progressbar"
-                                 style="width: {$disk_usage.used_percentage}%"
-                                 aria-valuenow="{$disk_usage.used_percentage}" aria-valuemin="0" aria-valuemax="100">
+                                style="width: {$disk_usage.used_percentage}"
+                                aria-valuenow="{$disk_usage.used_percentage}" aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
                     </div>
@@ -349,12 +350,12 @@
         <div class="card-body">
             <div class="row system-info">
                 {foreach $systemInfo as $key => $value}
-                    <div class="col-md-4 mb-3">
-                        <div class="info-item">
-                            <span class="label">{$key}:</span>
-                            <span class="value">{$value}</span>
-                        </div>
+                <div class="col-md-4 mb-3">
+                    <div class="info-item">
+                        <span class="label">{$key}:</span>
+                        <span class="value">{$value}</span>
                     </div>
+                </div>
                 {/foreach}
             </div>
         </div>
@@ -368,21 +369,21 @@
         <div class="card-body">
             <div class="row">
                 {foreach $serviceTable.rows as $row}
-                    <div class="col-md-6">
-                        <div class="service-status-item {if $row.1|strpos:'active' !== false}active{else}inactive{/if}">
-                            <div class="service-icon">
-                                {if $row.1|strpos:'active' !== false}
-                                    <i class="fas fa-check-circle text-success"></i>
-                                {else}
-                                    <i class="fas fa-times-circle text-danger"></i>
-                                {/if}
-                            </div>
-                            <div class="service-info">
-                                <h6>{$row.0}</h6>
-                                <small>{$row.1}</small>
-                            </div>
+                <div class="col-md-6">
+                    <div class="service-status-item {if $row.1|strpos:'active' !== false}active{else}inactive{/if}">
+                        <div class="service-icon">
+                            {if $row.1|strpos:'active' !== false}
+                            <i class="fas fa-check-circle text-success"></i>
+                            {else}
+                            <i class="fas fa-times-circle text-danger"></i>
+                            {/if}
+                        </div>
+                        <div class="service-info">
+                            <h6>{$row.0}</h6>
+                            <small>{$row.1}</small>
                         </div>
                     </div>
+                </div>
                 {/foreach}
             </div>
         </div>
@@ -398,7 +399,7 @@
                     <form action="{$_url}plugin/system_info" method="post">
                         <input type="hidden" name="reload" value="true">
                         <button type="submit" class="btn btn-lg btn-gradient-info" data-toggle="tooltip"
-                                title="Restart FreeRADIUS service" onclick="return confirm('Are you sure?')">
+                            title="Restart FreeRADIUS service" onclick="return confirm('Are you sure?')">
                             <i class="fas fa-sync-alt"></i> Restart RADIUS
                         </button>
                     </form>
@@ -412,7 +413,7 @@
 
                 <div class="col-md-4">
                     <button class="btn btn-lg btn-gradient-danger btn-shutdown" data-toggle="modal"
-                            data-target="#shutdownModal">
+                        data-target="#shutdownModal">
                         <i class="fas fa-power-off"></i> Shutdown
                     </button>
                 </div>
@@ -485,24 +486,34 @@
         </div>
     </div>
 </div>
-<br><br>
-{if $output != ''}
-    <div class="panel panel-primary panel-hovered panel-stacked mb30">
-        <div class="panel-heading">Results</div>
-        <div class="panel-body">
-          <pre>
-          {if $returnCode === 0}
-              <p>Freeradius service reload successfully!</p>
-
-{else}
-
-              <p>Freeradius service reload failed. Return code: {$returnCode} : {$output} </p>
-          {/if}
-          </pre>
+<hr>
+<br><br><br>
+{if $output|@count > 0}
+<div class="panel panel-primary panel-hovered panel-stacked mb30">
+    <div class="panel-heading">Results</div>
+    <div class="panel-body">
+        <div class="bs-callout bs-callout-info" id="callout-navbar-role">
+            {if $returnCode === 0}
+            <p>Freeradius service reloaded successfully!</p>
+            {else}
+            <p>Freeradius service reload failed. Return code: {$returnCode}</p>
+            <ul>
+                {foreach from=$output item=item}
+                <li>{$item}</li>
+                {/foreach}
+            </ul>
+            {/if}
         </div>
     </div>
+</div>
 {/if}
 
+<div class="bs-callout bs-callout-info" id="callout-navbar-role">
+    <h6>Note:</h6>
+    To restart the FreeRADIUS service, you need to run the following command as root:<br />
+    www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart freeradius.service
+
+</div>
 <script>
     $(function () {
         $('[data-toggle="tooltip"]').tooltip()

@@ -3,7 +3,7 @@ register_menu("System Info", true, "system_info", 'SETTINGS', '');
 
 function system_info()
 {
-    global $ui;
+    global $ui, $_app_stage;
     _admin();
     $ui->assign('_title', 'System Information');
     $ui->assign('_system_menu', 'settings');
@@ -14,19 +14,28 @@ function system_info()
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reload']) && $_POST['reload'] === 'true') {
-        $output = array();
+        $output = [];
         $retcode = 0;
 
-        $os = strtoupper(PHP_OS);
-
-        if (strpos($os, 'WIN') === 0) {
-            // Windows OS
-            exec('net stop freeradius', $output, $retcode);
-            exec('net start freeradius', $output, $retcode);
+        if ($_app_stage == 'Demo') {
+            $output['error'] = Lang::T('You cannot perform this action in Demo mode');
+            $retcode = 1;
+        } elseif (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+            $output['error'] = Lang::T('You do not have permission to access this page');
+            $retcode = 1;
         } else {
-            // Linux OS
-            exec('sudo systemctl restart freeradius.service 2>&1', $output, $retcode);
+            $os = strtoupper(PHP_OS);
+
+            if (strpos($os, 'WIN') === 0) {
+                // Windows OS
+                exec('net stop freeradius', $output, $retcode);
+                exec('net start freeradius', $output, $retcode);
+            } else {
+                // Linux OS
+                exec('sudo systemctl restart freeradius.service 2>&1', $output, $retcode);
+            }
         }
+
         $ui->assign('output', $output);
         $ui->assign('returnCode', $retcode);
     }
@@ -43,7 +52,7 @@ function system_info()
             ];
         }
 
-        $os = strtoupper(substr(PHP_OS, 0, 3)); // Get the OS type (WIN, LIN, or DAR for macOS)
+        $os = strtoupper(substr(PHP_OS, 0, 3));
 
         if ($os === 'WIN') {
             // Windows system
@@ -166,7 +175,7 @@ function system_info()
     function system_info_getSystemInfo()
     {
         global $ui;
-       
+
         $db = ORM::getDb();
         $serverInfo = $db->getAttribute(PDO::ATTR_SERVER_VERSION);
         $databaseName = $db->query('SELECT DATABASE()')->fetchColumn();
@@ -272,7 +281,7 @@ function system_info()
                     'total' => system_info_format_bytes($total_disk),
                     'used' => system_info_format_bytes($used_disk),
                     'free' => system_info_format_bytes($free_disk),
-                    'used_percentage' => $disk_usage_percentage . '%',
+                    'used_percentage' => "$disk_usage_percentage%",
                 ];
             }
         }
