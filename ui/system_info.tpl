@@ -306,8 +306,8 @@
                     <h5 class="card-title"><i class="fas fa-memory text-success"></i> Memory</h5>
                     <div class="progress-container">
                         <div class="d-flex justify-content-between">
-                            <small>Used ({$memory_usage.used} GB)</small>
-                            <small>Total {$memory_usage.total} GB</small>
+                            <small>Used ({$memory_usage.used} MB)</small>
+                            <small>Total {$memory_usage.total} MB</small>
                         </div>
                         <div class="progress">
                             <div class="progress-bar bg-gradient-success" role="progressbar"
